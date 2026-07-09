@@ -1,0 +1,9 @@
+# Đổi tên file này thành .gitmodules (hoặc để `git submodule add` tự tạo).
+[submodule "backend"]
+	path = backend
+	url = git@github.com:<your-account>/anhngu-backend.git
+	branch = main
+[submodule "frontend"]
+	path = frontend
+	url = git@github.com:<your-account>/anhngu-frontend.git
+	branch = main

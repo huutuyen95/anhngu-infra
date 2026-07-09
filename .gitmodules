@@ -1,0 +1,8 @@
+[submodule "anhngu-backend"]
+	path = anhngu-backend
+	url = https://github.com/huutuyen95/anhngu-backend.git
+	branch = main
+[submodule "anhngu-frontend"]
+	path = anhngu-frontend
+	url = https://github.com/huutuyen95/anhngu-frontend.git
+	branch = main

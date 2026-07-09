@@ -1,0 +1,82 @@
+# =========================================================
+# anhngu-infra — chạy toàn bộ hệ thống bằng 1 lệnh:
+#   docker compose up -d --build
+#
+# backend/ và frontend/ là git submodule (xem README).
+# =========================================================
+name: anhngu
+
+services:
+  # ---------- MySQL ----------
+  mysql:
+    image: mysql:8
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-anh_ngu}
+      MYSQL_USER: ${DB_USERNAME:-anhngu}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-secret}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-p${DB_ROOT_PASSWORD:-root}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------- Redis ----------
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  # ---------- Backend (Laravel php-fpm) ----------
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    env_file:
+      - ./env/backend.env
+    volumes:
+      # Dev: bind-mount để sửa code là thấy ngay. Prod: bỏ dòng này (code đã nằm trong image).
+      - ./backend:/var/www/html
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  # ---------- Nginx (phục vụ API Laravel) ----------
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - ./backend:/var/www/html:ro
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+
+  # ---------- Frontend (Next.js) ----------
+  # Dev: chạy next dev có hot-reload. Prod: đổi sang build image (xem README).
+  frontend:
+    image: node:20-alpine
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - nginx
+
+volumes:
+  mysql-data:
